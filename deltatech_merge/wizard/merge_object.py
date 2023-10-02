@@ -194,6 +194,18 @@ class MergeObject(models.TransientModel):
 
         self.invalidate_cache()
 
+    def _get_model_reference_mapping(self):
+        return {
+            "calendar.event": {"field_model": "res_model", "field_id": "res_id"},
+            "ir.attachment": {"field_model": "res_model", "field_id": "res_id"},
+            "mail.followers": {"field_model": "res_model", "field_id": "res_id"},
+            "portal.share": {"field_model": "res_model", "field_id": "res_id"},
+            "rating.rating": {"field_model": "res_model", "field_id": "res_id"},
+            "mail.activity": {"field_model": "res_model", "field_id": "res_id"},
+            "mail.message": {"field_model": "model", "field_id": "res_id"},
+            "ir.model.data": {"field_model": "model", "field_id": "res_id"},
+        }
+
     @api.model
     def _update_reference_fields(self, src_objects, dst_object):
         """Update all reference fields from the src_object to dst_object.
@@ -219,15 +231,14 @@ class MergeObject(models.TransientModel):
         update_records = functools.partial(update_records)
 
         for scr_object in src_objects:
-            update_records("calendar.event", src=scr_object, field_model="res_model")
-            update_records("ir.attachment", src=scr_object, field_model="res_model")
-            update_records("mail.followers", src=scr_object, field_model="res_model")
-
-            update_records("portal.share", src=scr_object, field_model="res_model")
-            update_records("rating.rating", src=scr_object, field_model="res_model")
-            update_records("mail.activity", src=scr_object, field_model="res_model")
-            update_records("mail.message", src=scr_object)
-            update_records("ir.model.data", src=scr_object)
+            mapping = self._get_model_reference_mapping()
+            for model in mapping:
+                update_records(
+                    model,
+                    src=scr_object,
+                    field_model=mapping[model]["field_model"],
+                    field_id=mapping[model]["field_id"],
+                )
 
         records = self.env["ir.model.fields"].search([("ttype", "=", "reference")])
         for record in records.sudo():
